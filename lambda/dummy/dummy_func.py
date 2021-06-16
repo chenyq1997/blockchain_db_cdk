@@ -1,12 +1,14 @@
+import os
 import sys
 import logging
-import rds_config
-import pymysql
-#rds settings
-rds_host  = "rds-instance-endpoint"
-name = rds_config.db_username
-password = rds_config.db_password
-db_name = rds_config.db_name
+import pymysql  # TODO Import failure
+import boto3
+
+# rds settings
+rds_host = os.environ['db_endpoint_address']  # TODO
+name = "admin"
+password = "8fsB-F(('pQvK5eu"
+db_name = "db1"
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -19,6 +21,8 @@ except pymysql.MySQLError as e:
     sys.exit()
 
 logger.info("SUCCESS: Connection to RDS MySQL instance succeeded")
+
+
 def handler(event, context):
     """
     This function fetches content from MySQL RDS instance
@@ -36,7 +40,7 @@ def handler(event, context):
         for row in cur:
             item_count += 1
             logger.info(row)
-            #print(row)
+            # print(row)
     conn.commit()
 
-    return "Added %d items from RDS MySQL table" %(item_count)
+    return "Added %d items from RDS MySQL table" % (item_count)

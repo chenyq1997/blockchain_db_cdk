@@ -7,13 +7,13 @@ import aws_cdk.aws_events as events
 import aws_cdk.aws_events_targets as targets
 import aws_cdk.aws_iam as iam
 
-from pathlib import Path
-
 # For consistency with other languages, `cdk` is the preferred import name for
 # the CDK's core module.  The following line also imports it as `core` for use
 # with examples from the CDK Developer's Guide, which are in the process of
 # being updated to use `cdk`.  You may delete this import if you don't need it.
 from aws_cdk import core
+
+pstr = "8fsB-F(('pQvK5eu"
 
 
 class BlockchainDbCdkStack(cdk.Stack):
@@ -29,6 +29,9 @@ class BlockchainDbCdkStack(cdk.Stack):
         db = rds.DatabaseInstance(
             self, "RDS",
             database_name="db1",
+            credentials=rds.Credentials.from_password(
+                "admin", core.SecretValue(pstr)
+            ),
             engine=rds.DatabaseInstanceEngine.mysql(
                 version=rds.MysqlEngineVersion.VER_5_7
             ),
@@ -55,11 +58,13 @@ class BlockchainDbCdkStack(cdk.Stack):
                                       vpc=vpc,
                                       runtime=lambda_.Runtime.PYTHON_3_8,
                                       handler='dummy_func.handler',
-                                      code=lambda_.Code.asset("./lambda/dummy"),
+                                      code=lambda_.Code.from_asset("./lambda/dummy/dummy_func.zip"),
                                       role=lambda_vpc_role
                                       )
         db.grant_connect(dummy_func)
-
+        # Env setter TODO Standalone method
+        dummy_func.add_environment("db_endpoint_address", db.db_instance_endpoint_address)
+        dummy_func.add_environment("db_endpoint_port", db.db_instance_endpoint_port)
 
         # Run every hour at 0 minute mark
         # See https://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html
