@@ -57,20 +57,19 @@ class BlockchainDbCdkStack(cdk.Stack):
                                     ("service-role/AWSLambdaBasicExecutionRole")],
                                    )
         # MySQL Client Layer
-        mysql_layer = lambda_.LayerVersion(self, "mysql_layer",
-                                           code=lambda_.Code.from_asset("./lambda/layers/layer.zip"),
-                                           compatible_runtimes=[lambda_.Runtime.PYTHON_3_8,
-                                                                lambda_.Runtime.PYTHON_3_7],
-                                           description="Layer for MySQL client Library",
-                                           removal_policy=core.RemovalPolicy.DESTROY
-                                           )
+        pymysql_layer = lambda_.LayerVersion(self, "pymysql_layer",
+                                             code=lambda_.Code.from_asset("./lambda/layers/pymysql_layer.zip"),
+                                             compatible_runtimes=[lambda_.Runtime.PYTHON_3_8],
+                                             description="Layer for MySQL client Library",
+                                             removal_policy=core.RemovalPolicy.DESTROY
+                                             )
         # Function
         dummy_func = lambda_.Function(self, "dummy_lambda_function",
                                       vpc=vpc,
-                                      runtime=lambda_.Runtime.PYTHON_3_7,
+                                      runtime=lambda_.Runtime.PYTHON_3_8,
                                       handler='dummy_func.handler',
                                       code=lambda_.Code.from_asset("./lambda/dummy/dummy_func.zip"),
-                                      layers=[mysql_layer],
+                                      layers=[pymysql_layer],
                                       role=lambda_vpc_role
                                       )
         db.grant_connect(dummy_func)
