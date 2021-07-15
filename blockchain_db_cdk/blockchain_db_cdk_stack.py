@@ -33,7 +33,7 @@ class BlockchainDbCdkStack(cdk.Stack):
                 "admin", core.SecretValue(pstr)
             ),
             engine=rds.DatabaseInstanceEngine.mysql(
-                version=rds.MysqlEngineVersion.VER_8_0_16
+                version=rds.MysqlEngineVersion.VER_5_7
             ),
             vpc=vpc,
             port=3306,
@@ -56,23 +56,25 @@ class BlockchainDbCdkStack(cdk.Stack):
                                     iam.ManagedPolicy.from_aws_managed_policy_name
                                     ("service-role/AWSLambdaBasicExecutionRole")],
                                    )
-        # MySQL Client Layer
-        pymysql_layer = lambda_.LayerVersion(self, "pymysql_layer",
-                                             code=lambda_.Code.from_asset("./lambda/layers/pymysql_layer.zip"),
-                                             compatible_runtimes=[lambda_.Runtime.PYTHON_3_8],
-                                             description="Layer for MySQL client Library",
-                                             removal_policy=core.RemovalPolicy.DESTROY
-                                             )
+        # Dependency Layer
+        lambda_layer = lambda_.LayerVersion(self, "lambda_layer",
+                                            code=lambda_.Code.from_asset("./lambda/layers/layer.zip"),
+                                            compatible_runtimes=[lambda_.Runtime.PYTHON_3_8],
+                                            description="Layer for Lambda dependencies",
+                                            removal_policy=core.RemovalPolicy.DESTROY
+                                            )
         # Function
         dummy_func = lambda_.Function(self, "dummy_lambda_function",
                                       vpc=vpc,
                                       runtime=lambda_.Runtime.PYTHON_3_8,
                                       handler='dummy_func.handler',
                                       code=lambda_.Code.from_asset("./lambda/dummy/dummy_func.zip"),
-                                      layers=[pymysql_layer],
+                                      layers=[lambda_layer],
                                       role=lambda_vpc_role
                                       )
         db.grant_connect(dummy_func)
+        db.connections.allow_from(dummy_func, ec2.Port.all_traffic())
+        db.connections.allow_to(dummy_func, ec2.Port.all_traffic())
         # Env setter TODO Standalone method
         dummy_func.add_environment("db_endpoint_address", db.db_instance_endpoint_address)
         dummy_func.add_environment("db_endpoint_port", db.db_instance_endpoint_port)
