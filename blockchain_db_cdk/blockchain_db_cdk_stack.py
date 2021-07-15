@@ -64,20 +64,20 @@ class BlockchainDbCdkStack(cdk.Stack):
                                             removal_policy=core.RemovalPolicy.DESTROY
                                             )
         # Function
-        dummy_func = lambda_.Function(self, "dummy_lambda_function",
+        update_db = lambda_.Function(self, "update_db_function",
                                       vpc=vpc,
                                       runtime=lambda_.Runtime.PYTHON_3_8,
-                                      handler='dummy_func.handler',
-                                      code=lambda_.Code.from_asset("./lambda/dummy/dummy_func.zip"),
+                                      handler='update_db.handler',
+                                      code=lambda_.Code.from_asset("./lambda/update_db"),
                                       layers=[lambda_layer],
                                       role=lambda_vpc_role
                                       )
-        db.grant_connect(dummy_func)
-        db.connections.allow_from(dummy_func, ec2.Port.all_traffic())
-        db.connections.allow_to(dummy_func, ec2.Port.all_traffic())
+        db.grant_connect(update_db)
+        db.connections.allow_from(update_db, ec2.Port.all_traffic())
+        db.connections.allow_to(update_db, ec2.Port.all_traffic())
         # Env setter TODO Standalone method
-        dummy_func.add_environment("db_endpoint_address", db.db_instance_endpoint_address)
-        dummy_func.add_environment("db_endpoint_port", db.db_instance_endpoint_port)
+        update_db.add_environment("db_endpoint_address", db.db_instance_endpoint_address)
+        update_db.add_environment("db_endpoint_port", db.db_instance_endpoint_port)
 
         # Run every hour at 0 minute mark
         # See https://docs.aws.amazon.com/lambda/latest/dg/tutorial-scheduled-events-schedule-expressions.html
@@ -90,13 +90,13 @@ class BlockchainDbCdkStack(cdk.Stack):
                 week_day='*',
                 year='*'),
         )
-        rule.add_target(targets.LambdaFunction(dummy_func))
+        rule.add_target(targets.LambdaFunction(update_db))
 
         # API - Placeholder
         api = apigateway.RestApi(self, "bc_data_backend_api", endpoint_types=[apigateway.EndpointType.REGIONAL])
         # Add lambda integration
         get_data_entity = api.root.add_resource('get_data')
-        dummy_integration = apigateway.LambdaIntegration(dummy_func, proxy=False,
+        dummy_integration = apigateway.LambdaIntegration(update_db, proxy=False,
                                                          integration_responses=[
                                                              {
                                                                  'statusCode': '200',
