@@ -25,7 +25,26 @@ class BlockchainDbCdkStack(cdk.Stack):
 
         # RDS - Placeholder
 
-        vpc = ec2.Vpc(self, "VPC")
+        vpc = ec2.Vpc(self, "VPC",
+                      nat_gateways=1,
+                      subnet_configuration=[
+                          ec2.SubnetConfiguration(
+                              cidr_mask=24,
+                              name="subnet-public",
+                              subnet_type=ec2.SubnetType.PUBLIC,
+                          ),
+                          ec2.SubnetConfiguration(
+                              cidr_mask=24,
+                              name="subnet-private",
+                              subnet_type=ec2.SubnetType.PRIVATE,
+                          ),
+                          ec2.SubnetConfiguration(
+                              cidr_mask=28,
+                              name="subnet-isolated",
+                              subnet_type=ec2.SubnetType.ISOLATED,
+                          ),
+                      ]
+                      )
         db = rds.DatabaseInstance(
             self, "RDS",
             database_name="db1",
@@ -65,13 +84,14 @@ class BlockchainDbCdkStack(cdk.Stack):
                                             )
         # Function
         update_db = lambda_.Function(self, "update_db_function",
-                                      vpc=vpc,
-                                      runtime=lambda_.Runtime.PYTHON_3_8,
-                                      handler='update_db.handler',
-                                      code=lambda_.Code.from_asset("./lambda/update_db"),
-                                      layers=[lambda_layer],
-                                      role=lambda_vpc_role
-                                      )
+                                     vpc=vpc,
+                                     vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE),
+                                     runtime=lambda_.Runtime.PYTHON_3_8,
+                                     handler='update_db.handler',
+                                     code=lambda_.Code.from_asset("./lambda/update_db"),
+                                     layers=[lambda_layer],
+                                     role=lambda_vpc_role
+                                     )
         db.grant_connect(update_db)
         db.connections.allow_from(update_db, ec2.Port.all_traffic())
         db.connections.allow_to(update_db, ec2.Port.all_traffic())
